@@ -1,0 +1,2 @@
+https://www.youtube.com/watch?v=vF9QRJwJXJk&ab_channel=KrishNaik
+https://medium.datadriveninvestor.com/video-streaming-using-flask-and-opencv-c464bf8473d6
