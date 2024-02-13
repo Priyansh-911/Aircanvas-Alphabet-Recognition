@@ -9,3 +9,5 @@ You can see its working in the video below
 
 https://github.com/Priyansh-911/Aircanvas-Alphabet-Recognition/assets/90508990/c95b8109-595d-4fe2-9a2a-5eb5da43ed54
 
+Hand Written Digit Recognition project link - https://github.com/Priyansh-911/Hand-digit-recognition
+
