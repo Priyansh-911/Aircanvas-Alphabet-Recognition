@@ -24,8 +24,9 @@ class image_class():
         # find handLandmarks
         img = self.detector.findHands(img)
         lmList = self.detector.trackPos(img, draw=False)
+        # print(lmList)
         
-        if lmList != 0:
+        if lmList != []:
             x1, y1 = lmList[8][1:]
             x2, y2 = lmList[12][1:]
 
@@ -74,24 +75,30 @@ class image_class():
                     cv2.line(self.imgCanvas, (self.xp, self.yp), (x1, y1), self.drawColor, self.brushThickness)
                 
                 self.xp, self.yp = x1, y1
-        
-
-        imgGray = cv2.cvtColor(self.imgCanvas, cv2.COLOR_BGR2GRAY)
-        _, imgInverse = cv2.threshold(imgGray, 50, 255, cv2.THRESH_BINARY_INV)
-        imgInverse = cv2.cvtColor(imgInverse, cv2.COLOR_GRAY2BGR)
-        img = cv2.bitwise_and(img, imgInverse)
-        img = cv2.bitwise_or(img, self.imgCanvas)
-        img[0:125, 0:1280] = self.header
-        success, image = cv2.imencode('.jpg', img)
-        return image.tobytes(), self.imgCanvas, img
-        # return img , self.imgCanvas
-    
 
 
-
-
+            imgGray = cv2.cvtColor(self.imgCanvas, cv2.COLOR_BGR2GRAY)
+            _, imgInverse = cv2.threshold(imgGray, 50, 255, cv2.THRESH_BINARY_INV)
+            imgInverse = cv2.cvtColor(imgInverse, cv2.COLOR_GRAY2BGR)
+            img = cv2.bitwise_and(img, imgInverse)
+            img = cv2.bitwise_or(img, self.imgCanvas)
+            img[0:125, 0:1280] = self.header
+            success, image = cv2.imencode('.jpg', img)
+            return image.tobytes(), self.imgCanvas, img
             
-                    
+        elif lmList == []:
+            imgGray = cv2.cvtColor(self.imgCanvas, cv2.COLOR_BGR2GRAY)
+            _, imgInverse = cv2.threshold(imgGray, 50, 255, cv2.THRESH_BINARY_INV)
+            imgInverse = cv2.cvtColor(imgInverse, cv2.COLOR_GRAY2BGR)
+            img = cv2.bitwise_and(img, imgInverse)
+            img = cv2.bitwise_or(img, self.imgCanvas)
+            img[0:125, 0:1280] = self.header
+            success, image = cv2.imencode('.jpg', img)
+            return image.tobytes(), self.imgCanvas, img
+            # return img , self.imgCanvas
+        
+        else:
+            print("Errorrrrrr")
                     
 def main():
     folderPath = "c://Users//HP//Desktop//Canvas flask app//app//static"
