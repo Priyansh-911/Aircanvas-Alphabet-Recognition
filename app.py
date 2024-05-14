@@ -33,7 +33,7 @@ def generate():
     cap.set(4, height)
     while True:
         suc, img = cap.read()
-        img = cv2.resize(img, (width, height))
+        # img = cv2.resize(img, (width, height))
         x,y,z = classes.generate_frame(img, overlayList)
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + x + b'\r\n\r\n')
