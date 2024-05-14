@@ -19,7 +19,7 @@ app = Flask(__name__)
 
 
 def generate():
-    folderPath = "c://Users//HP//Desktop//Canvas flask app//app//static"
+    folderPath = "static"
     myList = os.listdir(folderPath)
     overlayList = []
     for imgPath in myList:
@@ -62,5 +62,5 @@ def video_feed():
 # def canvas_feed():
 #       return Response(canvas(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-if __name__ == "__main__":
-    app.run(debug=True)
+# if __name__ == "__main__":
+#     app.run(debug=True)
