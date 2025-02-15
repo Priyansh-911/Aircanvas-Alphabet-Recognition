@@ -1,19 +1,240 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>WebRTC Video Processing</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        video {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #000;
+        }
+        h1 {
+            color: #333;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .status {
+            margin: 10px 0;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <div class="row">
-            <div class="col-lg-8  offset-lg-2">
-                <h3 class="mt-5">Live Streaming</h3>
-                <img src="{{ url_for('video_feed') }}" width="1280" height="720">
-            </div>
+        <h1>WebRTC Video Processing</h1>
+        <div class="status" id="status">Initializing...</div>
+        
+        <video id="videoElement" autoplay playsinline></video>
+        
+        <div class="controls">
+            <button id="startButton">Start Camera</button>
+            <button id="stopButton" disabled>Stop Camera</button>
         </div>
     </div>
+
+    <script>
+        // Global variables
+        let pc;
+        let localStream;
+        const videoElement = document.getElementById('videoElement');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const statusElement = document.getElementById('status');
+        
+        // Set up event listeners
+        startButton.addEventListener('click', startCamera);
+        stopButton.addEventListener('click', stopCamera);
+        
+        // Start the camera and WebRTC connection
+        async function startCamera() {
+            try {
+                statusElement.textContent = 'Requesting camera access...';
+                
+                // Get local media stream
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    audio: false,
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+                
+                // Show local video temporarily
+                videoElement.srcObject = localStream;
+                
+                // Create WebRTC peer connection
+                pc = createPeerConnection();
+                
+                // Add tracks to the peer connection
+                localStream.getTracks().forEach(track => {
+                    pc.addTrack(track, localStream);
+                });
+                
+                // Create and send offer
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                
+                // Send the offer to the server
+                sendToServer({
+                    type: 'offer',
+                    sdp: pc.localDescription.sdp
+                });
+                
+                // Update UI
+                startButton.disabled = true;
+                stopButton.disabled = false;
+                statusElement.textContent = 'Connected to server. Processing video...';
+                
+            } catch (e) {
+                console.error('Error starting camera:', e);
+                statusElement.textContent = 'Error: ' + e.message;
+            }
+        }
+        
+        // Stop camera and close connection
+        function stopCamera() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            
+            if (pc) {
+                pc.close();
+                pc = null;
+            }
+            
+            videoElement.srcObject = null;
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            statusElement.textContent = 'Disconnected';
+        }
+        
+        // Create RTCPeerConnection
+        function createPeerConnection() {
+            const pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            
+            // Set up event handlers
+            pc.onicecandidate = event => {
+                if (event.candidate) {
+                    sendToServer({
+                        type: 'ice',
+                        candidate: event.candidate
+                    });
+                }
+            };
+            
+            pc.ontrack = event => {
+                if (event.streams && event.streams[0]) {
+                    videoElement.srcObject = event.streams[0];
+                    statusElement.textContent = 'Receiving processed video';
+                }
+            };
+            
+            pc.oniceconnectionstatechange = () => {
+                if (pc.iceConnectionState === 'disconnected' || 
+                    pc.iceConnectionState === 'failed' || 
+                    pc.iceConnectionState === 'closed') {
+                    stopCamera();
+                }
+            };
+            
+            return pc;
+        }
+        
+        // Send data to WebSocket server
+        function sendToServer(data) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                console.error('WebSocket is not connected');
+                return;
+            }
+            ws.send(JSON.stringify(data));
+        }
+        
+        // Set up WebSocket connection
+        let ws = null;
+        
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.hostname}:8765`;
+            
+            statusElement.textContent = 'Connecting to server...';
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                statusElement.textContent = 'Connected to server. Ready to start.';
+                startButton.disabled = false;
+            };
+            
+            ws.onmessage = async (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (!pc) return;
+                
+                if (data.type === 'answer') {
+                    await pc.setRemoteDescription(new RTCSessionDescription({
+                        type: data.type,
+                        sdp: data.sdp
+                    }));
+                }
+            };
+            
+            ws.onclose = () => {
+                statusElement.textContent = 'Disconnected from server';
+                startButton.disabled = true;
+                stopButton.disabled = true;
+                setTimeout(connectWebSocket, 3000);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                statusElement.textContent = 'WebSocket error occurred';
+            };
+        }
+        
+        // Initialize the application
+        window.addEventListener('load', () => {
+            startButton.disabled = true;
+            stopButton.disabled = true;
+            connectWebSocket();
+        });
+        
+        // Clean up when the page is closed
+        window.addEventListener('beforeunload', () => {
+            stopCamera();
+            if (ws) {
+                ws.close();
+            }
+        });
+    </script>
 </body>
 </html>
