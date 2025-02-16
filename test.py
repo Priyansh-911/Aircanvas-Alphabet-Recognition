@@ -7,7 +7,7 @@ import os
 class image_class():
 
     def __init__(self, overlayList):
-        self.brushThickness = 10
+        self.brushThickness = 6
         self.eraserSize = 50
         self.imgCanvas = np.zeros((720, 1280, 3), np.uint8)
         self.canvasClear = np.zeros((720, 1280, 3), np.uint8)
@@ -16,7 +16,7 @@ class image_class():
         self.xp = 0
         self.yp = 0
 
-        self.detector = HTM.handDetector(detectionCon=0.8)
+        self.detector = HTM.handDetector(detectionCon=0.8, trackCon=0.8)
     
     def generate_frame(self, img, overlayList):
         img = cv2.flip(img, 1)
